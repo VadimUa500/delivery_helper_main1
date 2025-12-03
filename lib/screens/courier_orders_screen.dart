@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import '../services/auth_storage.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'courier_order_details_screen.dart'; // 🆕 ДОДАТИ
 import 'package:provider/provider.dart';
 import '../theme/theme_notifier.dart';
 import '../widgets/status_chip.dart';
@@ -158,9 +159,11 @@ class _CourierOrdersScreenState extends State<CourierOrdersScreen> {
           ),
           Consumer<ThemeNotifier>(
             builder: (context, themeNotifier, _) => IconButton(
-              icon: Icon(themeNotifier.isDark
-                  ? Icons.wb_sunny
-                  : Icons.nightlight_round),
+              icon: Icon(
+                themeNotifier.isDark
+                    ? Icons.wb_sunny
+                    : Icons.nightlight_round,
+              ),
               tooltip: 'Змінити тему',
               onPressed: () => themeNotifier.toggleTheme(),
             ),
@@ -174,17 +177,29 @@ class _CourierOrdersScreenState extends State<CourierOrdersScreen> {
         child: ListView.builder(
           itemCount: orders.length,
           itemBuilder: (context, i) {
-            final o = orders[i];
+            final o = orders[i] as Map<String, dynamic>;
             return Card(
               margin: const EdgeInsets.all(8),
               child: ListTile(
-                title: Text(o['address']),
+                onTap: () async {
+                  final changed = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CourierOrderDetailsScreen(order: o),
+                    ),
+                  );
+                  if (changed == true) {
+                    await loadOrders();
+                  }
+                },
+                title: Text(o['address'] ?? ''),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     StatusChip(status: o['status']),
                     const SizedBox(height: 4),
-                    Text('Адреса: ${o['address']}'),
+                    Text('Адреса: ${o['address'] ?? ''}'),
                   ],
                 ),
                 trailing: buildActionButton(o),

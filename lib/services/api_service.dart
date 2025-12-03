@@ -15,6 +15,26 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<Map<String, dynamic>> register({
+    required String email,
+    required String password,
+    required String displayName,
+    required String role,
+  }) async {
+    final url = Uri.parse('$baseUrl/register');
+    final res = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'display_name': displayName,
+        'role': role,
+      }),
+    );
+    return jsonDecode(res.body);
+  }
+
   static Future<List<dynamic>> getOrders() async {
     final token = await AuthStorage.getToken();
     final url = Uri.parse('$baseUrl/orders');
@@ -41,8 +61,39 @@ class ApiService {
     final json = jsonDecode(res.body);
     return json['users'] ?? [];
   }
+  static Future<Map<String, dynamic>> updateUser(
+      String userId, {
+        String? role,
+        bool? isActive,
+      }) async {
+    final token = await AuthStorage.getToken();
+    final url = Uri.parse('$baseUrl/admin/users/$userId');
 
-  static Future<void> createOrder(String address, String desc, String phone) async {
+    final body = <String, dynamic>{};
+    if (role != null) body['role'] = role;
+    if (isActive != null) body['is_active'] = isActive;
+
+    final res = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    final json = jsonDecode(res.body);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json;
+    } else {
+      throw Exception(json['message'] ?? 'Помилка оновлення користувача');
+    }
+  }
+
+
+  static Future<void> createOrder(
+      String address, String desc, String phone) async {
     final token = await AuthStorage.getToken();
     final url = Uri.parse('$baseUrl/orders');
     await http.post(
@@ -126,6 +177,34 @@ class ApiService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    String? displayName,
+    String? avatarUrl,
+    String? oldPassword,
+    String? newPassword,
+  }) async {
+    final token = await AuthStorage.getToken();
+    final url = Uri.parse('$baseUrl/profile');
+
+    final body = <String, dynamic>{};
+    if (displayName != null) body['display_name'] = displayName;
+    if (avatarUrl != null) body['avatar_url'] = avatarUrl;
+    if (oldPassword != null && newPassword != null) {
+      body['old_password'] = oldPassword;
+      body['new_password'] = newPassword;
+    }
+
+    final res = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
     );
     return jsonDecode(res.body);
   }

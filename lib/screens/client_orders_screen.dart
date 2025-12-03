@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import 'create_order_screen.dart';
-import 'profile_screen.dart';
 import 'package:provider/provider.dart';
+
+import '../services/api_service.dart';
 import '../theme/theme_notifier.dart';
 import '../widgets/status_chip.dart';
-
+import 'create_order_screen.dart';
+import 'profile_screen.dart';
 
 class ClientOrdersScreen extends StatefulWidget {
   const ClientOrdersScreen({super.key});
@@ -19,11 +19,19 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
   bool loading = true;
 
   Future<void> loadOrders() async {
-    final data = await ApiService.getOrders();
-    setState(() {
-      orders = data;
-      loading = false;
-    });
+    try {
+      final data = await ApiService.getOrders();
+      setState(() {
+        orders = data;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Помилка завантаження: $e')),
+      );
+    }
   }
 
   @override
@@ -40,6 +48,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
+            tooltip: 'Профіль',
             onPressed: () {
               Navigator.push(
                 context,
@@ -49,25 +58,89 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
           ),
           Consumer<ThemeNotifier>(
             builder: (context, themeNotifier, _) => IconButton(
-              icon: Icon(themeNotifier.isDark ? Icons.wb_sunny : Icons.nightlight),
+              icon: Icon(
+                themeNotifier.isDark
+                    ? Icons.wb_sunny_outlined
+                    : Icons.nightlight_round,
+              ),
               tooltip: 'Змінити тему',
               onPressed: () => themeNotifier.toggleTheme(),
             ),
           ),
         ],
       ),
-
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        itemCount: orders.length,
-        itemBuilder: (context, i) {
-          final o = orders[i];
-          return ListTile(
-            title: Text(o['address']),
-            subtitle: StatusChip(status: o['status']),
-          );
-        },
+          : RefreshIndicator(
+        onRefresh: loadOrders,
+        child: orders.isEmpty
+            ? ListView(
+          children: const [
+            SizedBox(height: 120),
+            Center(
+              child: Text(
+                'Замовлень поки немає.\nСтворіть перше замовлення за допомогою кнопки "+".',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        )
+            : ListView.builder(
+          padding: const EdgeInsets.symmetric(
+              vertical: 8, horizontal: 8),
+          itemCount: orders.length,
+          itemBuilder: (context, i) {
+            final o = orders[i] as Map<String, dynamic>;
+            final address = o['address']?.toString() ?? '';
+            final desc = o['description']?.toString() ?? '';
+            final phone = o['phone']?.toString() ?? '';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(
+                  vertical: 4, horizontal: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 3,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 8, horizontal: 12),
+                title: Text(
+                  address.isEmpty ? '(без адреси)' : address,
+                  style:
+                  const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (desc.isNotEmpty)
+                      Padding(
+                        padding:
+                        const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          desc,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (phone.isNotEmpty)
+                      Padding(
+                        padding:
+                        const EdgeInsets.only(top: 2.0),
+                        child: Text(
+                          'Телефон: $phone',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey),
+                        ),
+                      ),
+                  ],
+                ),
+                trailing: StatusChip(status: o['status']),
+              ),
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -75,7 +148,9 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
             context,
             MaterialPageRoute(builder: (_) => const CreateOrderScreen()),
           );
-          if (created == true) loadOrders();
+          if (created == true) {
+            await loadOrders();
+          }
         },
         child: const Icon(Icons.add),
       ),

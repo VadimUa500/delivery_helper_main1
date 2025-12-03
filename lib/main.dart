@@ -5,6 +5,7 @@ import 'screens/client_orders_screen.dart';
 import 'screens/courier_orders_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/register_screen.dart';
 import 'theme/theme_notifier.dart';
 
 void main() {
@@ -41,7 +42,9 @@ class DeliveryHelperApp extends StatelessWidget {
         '/courier': (context) => const CourierOrdersScreen(),
         '/admin': (context) => const AdminDashboardScreen(),
         '/profile': (context) => const ProfileScreen(),
+        '/register': (context) => const RegisterScreen(),
       },
+
     );
   }
 }
