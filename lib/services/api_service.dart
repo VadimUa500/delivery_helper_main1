@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'auth_storage.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://10.0.2.2:5000';
+  static const String baseUrl = 'http://10.88.255.146:5000';
 
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/login');
@@ -38,6 +38,7 @@ class ApiService {
   static Future<List<dynamic>> getOrders() async {
     final token = await AuthStorage.getToken();
     final url = Uri.parse('$baseUrl/orders');
+
     final res = await http.get(
       url,
       headers: {
@@ -45,12 +46,76 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     );
-    return jsonDecode(res.body)['orders'];
+
+    final json = jsonDecode(res.body);
+    return json['orders'] ?? [];
+  }
+
+  static Future<List<dynamic>> getClientOrders(String tab) async {
+    final token = await AuthStorage.getToken();
+    final url = Uri.parse('$baseUrl/orders?tab=$tab');
+
+    final res = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final json = jsonDecode(res.body);
+    return json['orders'] ?? [];
+  }
+
+  static Future<List<dynamic>> getCourierOrders(
+      String tab, {
+        String city = '',
+      }) async {
+    final token = await AuthStorage.getToken();
+
+    final query = city.trim().isEmpty
+        ? 'tab=$tab'
+        : 'tab=$tab&city=${Uri.encodeComponent(city.trim())}';
+
+    final url = Uri.parse('$baseUrl/orders?$query');
+
+    final res = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final json = jsonDecode(res.body);
+    return json['orders'] ?? [];
+  }
+
+  static Future<Map<String, dynamic>> getOrderRoute(String orderId) async {
+    final token = await AuthStorage.getToken();
+    final url = Uri.parse('$baseUrl/orders/$orderId/route');
+
+    final res = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    final json = jsonDecode(res.body);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return json;
+    } else {
+      throw Exception(json['message'] ?? 'Помилка отримання маршруту');
+    }
   }
 
   static Future<List<dynamic>> getAllUsers() async {
     final token = await AuthStorage.getToken();
     final url = Uri.parse('$baseUrl/admin/users');
+
     final res = await http.get(
       url,
       headers: {
@@ -58,9 +123,11 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     );
+
     final json = jsonDecode(res.body);
     return json['users'] ?? [];
   }
+
   static Future<Map<String, dynamic>> updateUser(
       String userId, {
         String? role,
@@ -91,23 +158,48 @@ class ApiService {
     }
   }
 
-
-  static Future<void> createOrder(
-      String address, String desc, String phone) async {
+  static Future<void> createOrder({
+    required String orderType,
+    required String city,
+    required String pickupAddress,
+    required double pickupLat,
+    required double pickupLng,
+    required String deliveryAddress,
+    required double deliveryLat,
+    required double deliveryLng,
+    required String description,
+    required String phone,
+    String comment = '',
+  }) async {
     final token = await AuthStorage.getToken();
     final url = Uri.parse('$baseUrl/orders');
-    await http.post(
+
+    final res = await http.post(
       url,
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'address': address,
-        'description': desc,
+        'order_type': orderType,
+        'city': city,
+        'pickup_address': pickupAddress,
+        'pickup_lat': pickupLat,
+        'pickup_lng': pickupLng,
+        'delivery_address': deliveryAddress,
+        'delivery_lat': deliveryLat,
+        'delivery_lng': deliveryLng,
+        'description': description,
         'phone': phone,
+        'comment': comment,
       }),
     );
+
+    final json = jsonDecode(res.body);
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception(json['message'] ?? 'Помилка створення замовлення');
+    }
   }
 
   static Future<Map<String, dynamic>> acceptOrder(String orderId) async {
@@ -171,6 +263,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getProfile() async {
     final token = await AuthStorage.getToken();
     final url = Uri.parse('$baseUrl/profile');
+
     final res = await http.get(
       url,
       headers: {
@@ -178,6 +271,7 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     );
+
     return jsonDecode(res.body);
   }
 
@@ -206,6 +300,7 @@ class ApiService {
       },
       body: jsonEncode(body),
     );
+
     return jsonDecode(res.body);
   }
 }

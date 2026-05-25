@@ -7,6 +7,8 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/register_screen.dart';
 import 'theme/theme_notifier.dart';
+import 'screens/splash_screen.dart';
+
 
 void main() {
   runApp(
@@ -37,13 +39,15 @@ class DeliveryHelperApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       routes: {
-        '/': (context) => const LoginScreen(),
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
         '/client': (context) => const ClientOrdersScreen(),
         '/courier': (context) => const CourierOrdersScreen(),
         '/admin': (context) => const AdminDashboardScreen(),
         '/profile': (context) => const ProfileScreen(),
-        '/register': (context) => const RegisterScreen(),
       },
+
 
     );
   }

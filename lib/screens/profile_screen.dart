@@ -217,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     TextField(
                       controller: avatarUrlController,
                       decoration: const InputDecoration(
-                        labelText: 'Посилання на аватар (опційно)',
+                        labelText: 'Посилання на аватар',
                         prefixIcon: Icon(Icons.image_outlined),
                       ),
                     ),

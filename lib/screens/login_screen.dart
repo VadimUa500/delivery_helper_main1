@@ -96,6 +96,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // ЛОГОТИП
+                        Image.asset(
+                          'assets/images/logo.png',
+                          width: 120,
+                        ),
+                        const SizedBox(height: 16),
+
                         const Text(
                           'Delivery Helper',
                           style: TextStyle(
@@ -109,6 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
+
                         TextFormField(
                           controller: emailController,
                           decoration: const InputDecoration(
@@ -134,9 +142,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             labelText: 'Пароль',
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility),
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
                               onPressed: () {
                                 setState(() {
                                   _obscurePassword = !_obscurePassword;
@@ -167,7 +177,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: loading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding:
+                              const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),

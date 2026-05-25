@@ -98,6 +98,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // ЛОГОТИП
+                      Image.asset(
+                        'assets/images/logo.png',
+                        width: 110,
+                      ),
+                      const SizedBox(height: 12),
+
                       const Text(
                         'Створення акаунта',
                         style: TextStyle(
@@ -111,6 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 20),
+
                       TextFormField(
                         controller: emailController,
                         decoration: const InputDecoration(
@@ -129,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: displayNameController,
                         decoration: const InputDecoration(
-                          labelText: "Ім’я (опційно)",
+                          labelText: "Ім’я",
                           prefixIcon: Icon(Icons.person_outline),
                         ),
                       ),
@@ -140,9 +148,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           labelText: 'Пароль',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility),
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
                             onPressed: () {
                               setState(() {
                                 _obscurePassword = !_obscurePassword;
@@ -168,9 +178,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           labelText: 'Підтвердження пароля',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscureConfirm
-                                ? Icons.visibility_off
-                                : Icons.visibility),
+                            icon: Icon(
+                              _obscureConfirm
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
                             onPressed: () {
                               setState(() {
                                 _obscureConfirm = !_obscureConfirm;
@@ -205,7 +217,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             setState(() => role = v ?? 'client'),
                       ),
                       RadioListTile<String>(
-                        title: const Text('Кур’єр (приймає та виконує доставки)'),
+                        title:
+                        const Text('Кур’єр (приймає та виконує доставки)'),
                         value: 'courier',
                         groupValue: role,
                         onChanged: (v) =>

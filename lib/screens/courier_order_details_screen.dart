@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../widgets/status_chip.dart';
+import 'route_preview_screen.dart';
 
 class CourierOrderDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> order;
 
-  const CourierOrderDetailsScreen({super.key, required this.order});
+  const CourierOrderDetailsScreen({
+    super.key,
+    required this.order,
+  });
 
   @override
   State<CourierOrderDetailsScreen> createState() =>
@@ -22,24 +26,40 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
     _order = Map<String, dynamic>.from(widget.order);
   }
 
-  String get _id => _order['id'] ?? _order['_id'];
+  String get _id => (_order['id'] ?? _order['_id']).toString();
+
+  String _orderTypeText(String? type) {
+    switch (type) {
+      case 'food':
+        return 'Доставка їжі / товару';
+      case 'parcel':
+        return 'Передача посилки';
+      default:
+        return 'Замовлення';
+    }
+  }
 
   Future<void> _accept() async {
     setState(() => _processing = true);
+
     try {
       final res = await ApiService.acceptOrder(_id);
+
       if (!mounted) return;
+
       setState(() {
         _order['status'] = 'in_progress';
         _processing = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res['message'] ?? 'Замовлення прийнято')),
       );
-      Navigator.pop(context, true); // повідомляємо список, що є зміни
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _processing = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Помилка: $e')),
       );
@@ -48,64 +68,169 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
 
   Future<void> _deliver() async {
     setState(() => _processing = true);
+
     try {
       final res = await ApiService.deliverOrder(_id);
+
       if (!mounted) return;
+
       setState(() {
         _order['status'] = 'delivered';
         _processing = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res['message'] ?? 'Позначено як доставлено')),
       );
+
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _processing = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Помилка: $e')),
       );
     }
   }
 
-  Widget _buildBottomButton() {
-    final status = _order['status'];
+  Future<void> _openRoute() async {
+    try {
+      final route = await ApiService.getOrderRoute(_id);
 
-    if (status == 'new') {
-      return ElevatedButton.icon(
-        onPressed: _processing ? null : _accept,
-        icon: const Icon(Icons.assignment_turned_in_outlined),
-        label: const Text('Прийняти замовлення'),
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RoutePreviewScreen(route: route),
+        ),
       );
-    } else if (status == 'in_progress') {
-      return ElevatedButton.icon(
-        onPressed: _processing ? null : _deliver,
-        icon: const Icon(Icons.check_circle_outline),
-        label: const Text('Позначити як доставлено'),
-      );
-    } else {
-      return const Text(
-        'Замовлення вже доставлено',
-        style: TextStyle(color: Colors.grey),
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Помилка відкриття маршруту: $e')),
       );
     }
   }
 
+  Widget _infoRow(IconData icon, String title, String value) {
+    if (value.trim().isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 19),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  fontSize: 14,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$title: ',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: value),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final status = _order['status']?.toString() ?? 'new';
+
+    if (status == 'new') {
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _processing ? null : _accept,
+              icon: const Icon(Icons.assignment_turned_in_outlined),
+              label: _processing
+                  ? const Text('Обробка...')
+                  : const Text('Прийняти замовлення'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (status == 'in_progress') {
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openRoute,
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Відкрити маршрут'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _processing ? null : _deliver,
+              icon: const Icon(Icons.check_circle_outline),
+              label: _processing
+                  ? const Text('Обробка...')
+                  : const Text('Позначити як доставлено'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (status == 'delivered') {
+      return const Center(
+        child: Text(
+          'Замовлення вже доставлено',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return const Center(
+      child: Text(
+        'Замовлення недоступне',
+        style: TextStyle(color: Colors.grey),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final address = _order['address']?.toString() ?? '';
-    final desc = _order['description']?.toString() ?? '';
+    final orderType = _order['order_type']?.toString() ?? 'parcel';
+    final city = _order['city']?.toString() ?? '';
+    final pickupAddress = _order['pickup_address']?.toString() ?? '';
+    final deliveryAddress = _order['delivery_address']?.toString() ?? '';
+    final description = _order['description']?.toString() ?? '';
     final phone = _order['phone']?.toString() ?? '';
+    final comment = _order['comment']?.toString() ?? '';
+    final distance = _order['distance_km']?.toString() ?? '0';
+    final time = _order['estimated_time_min']?.toString() ?? '0';
     final createdAt = _order['created_at']?.toString() ?? '';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Деталі замовлення'),
+        title: const Text('Деталі доставки'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
               elevation: 4,
@@ -115,7 +240,6 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -123,53 +247,32 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            address.isEmpty ? '(без адреси)' : address,
+                            _orderTypeText(orderType),
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Статус:',
-                          style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                         StatusChip(status: _order['status']),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    if (phone.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.phone, size: 18),
-                          const SizedBox(width: 6),
-                          Text(phone),
-                        ],
-                      ),
-                    ],
-                    if (createdAt.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 18),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Створено: $createdAt',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    const Divider(height: 24),
+                    _infoRow(Icons.location_city, 'Місто', city),
+                    _infoRow(
+                      Icons.my_location_outlined,
+                      'Звідки забрати',
+                      pickupAddress,
+                    ),
+                    _infoRow(
+                      Icons.location_on_outlined,
+                      'Куди доставити',
+                      deliveryAddress,
+                    ),
+                    _infoRow(Icons.route_outlined, 'Відстань', '$distance км'),
+                    _infoRow(Icons.timer_outlined, 'Орієнтовний час', '$time хв'),
+                    _infoRow(Icons.phone_outlined, 'Телефон', phone),
+                    _infoRow(Icons.access_time, 'Створено', createdAt),
                   ],
                 ),
               ),
@@ -182,50 +285,60 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Опис посилки',
-                      style:
-                      TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      desc.isEmpty ? 'Опис не вказано.' : desc,
-                    ),
-                  ],
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Опис замовлення',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        description.isEmpty
+                            ? 'Опис не вказано.'
+                            : description,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Матеріали кур’єра',
-                      style:
-                      TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            if (comment.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Коментар клієнта',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(comment),
+                      ],
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      'У майбутніх версіях тут можна буде додавати фото доставки, '
-                          'коментарі для клієнта та інші дані.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
             const SizedBox(height: 24),
-            Center(child: _buildBottomButton()),
+            _buildActionButtons(),
           ],
         ),
       ),
