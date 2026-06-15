@@ -1,3 +1,9 @@
 class MapsConfig {
-  static const String googleApiKey = 'AIzaSyBCntnYuynD8EKEgFc53T01eVUTnrch_nM';
+MapsConfig._();
+
+static const String apiKey = String.fromEnvironment(
+'GOOGLE_MAPS_API_KEY',
+defaultValue: '',
+);
 }
+

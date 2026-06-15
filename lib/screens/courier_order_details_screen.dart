@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../services/api_service.dart';
 import '../widgets/status_chip.dart';
 import 'route_preview_screen.dart';
@@ -30,12 +32,46 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
 
   String _orderTypeText(String? type) {
     switch (type) {
-      case 'food':
-        return 'Доставка їжі / товару';
+      case 'documents':
+        return 'Передача документів';
       case 'parcel':
         return 'Передача посилки';
       default:
-        return 'Замовлення';
+        return 'Замовлення доставки';
+    }
+  }
+
+  IconData _orderTypeIcon(String? type) {
+    switch (type) {
+      case 'documents':
+        return Icons.description_rounded;
+      case 'parcel':
+        return Icons.inventory_2_rounded;
+      default:
+        return Icons.local_shipping_rounded;
+    }
+  }
+
+  Future<void> _callPhone(String phone) async {
+    final cleanedPhone = phone.replaceAll(RegExp(r'\s+'), '');
+
+    if (cleanedPhone.isEmpty) return;
+
+    final uri = Uri(scheme: 'tel', path: cleanedPhone);
+
+    final opened = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: const Text('Не вдалося відкрити телефонний застосунок'),
+        ),
+      );
     }
   }
 
@@ -53,7 +89,11 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message'] ?? 'Замовлення прийнято')),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(res['message'] ?? 'Замовлення прийнято'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -61,7 +101,11 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
       setState(() => _processing = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Помилка: $e')),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text('Помилка: $e'),
+        ),
       );
     }
   }
@@ -80,7 +124,11 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message'] ?? 'Позначено як доставлено')),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(res['message'] ?? 'Позначено як доставлено'),
+        ),
       );
 
       Navigator.pop(context, true);
@@ -90,7 +138,11 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
       setState(() => _processing = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Помилка: $e')),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text('Помилка: $e'),
+        ),
       );
     }
   }
@@ -111,108 +163,291 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Помилка відкриття маршруту: $e')),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text('Помилка відкриття маршруту: $e'),
+        ),
       );
     }
   }
 
-  Widget _infoRow(IconData icon, String title, String value) {
+  Widget _buildInfoRow(
+      IconData icon,
+      String title,
+      String value,
+      BuildContext context,
+      ) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
 
+    final theme = Theme.of(context);
+    final isPhone = title == 'Контакт клієнта';
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 19),
-          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
-                  fontSize: 14,
-                ),
-                children: [
-                  TextSpan(
-                    text: '$title: ',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.hintColor,
+                    fontWeight: FontWeight.w500,
                   ),
-                  TextSpan(text: value),
-                ],
-              ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
+          if (isPhone)
+            IconButton(
+              icon: const Icon(Icons.call, color: Color(0xFF34C759), size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFF34C759).withValues(alpha: 0.1),
+                padding: const EdgeInsets.all(8),
+              ),
+              onPressed: () => _callPhone(value),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(
+      BuildContext context,
+      IconData icon,
+      String value,
+      String unit,
+      String label,
+      ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E222D) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.03),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: theme.colorScheme.primary, size: 24),
+            const SizedBox(height: 12),
+            Row(
+              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: theme.hintColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.hintColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildActionButtons() {
     final status = _order['status']?.toString() ?? 'new';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Widget buttonContent;
 
     if (status == 'new') {
-      return Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _processing ? null : _accept,
-              icon: const Icon(Icons.assignment_turned_in_outlined),
-              label: _processing
-                  ? const Text('Обробка...')
-                  : const Text('Прийняти замовлення'),
-            ),
+      buttonContent = ElevatedButton.icon(
+        onPressed: _processing ? null : _accept,
+        icon: _processing
+            ? const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
           ),
-        ],
+        )
+            : const Icon(Icons.assignment_turned_in_rounded),
+        label: Text(_processing ? 'Обробка...' : 'Прийняти замовлення'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
+          minimumSize: const Size(double.infinity, 56),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       );
-    }
-
-    if (status == 'in_progress') {
-      return Column(
+    } else if (status == 'in_progress') {
+      buttonContent = Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _openRoute,
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Відкрити маршрут'),
+          ElevatedButton.icon(
+            onPressed: _openRoute,
+            icon: const Icon(Icons.map_rounded),
+            label: const Text('Відкрити навігатор / карту'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              foregroundColor: theme.colorScheme.onSecondaryContainer,
+              minimumSize: const Size(double.infinity, 54),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _processing ? null : _deliver,
-              icon: const Icon(Icons.check_circle_outline),
-              label: _processing
-                  ? const Text('Обробка...')
-                  : const Text('Позначити як доставлено'),
+          ElevatedButton.icon(
+            onPressed: _processing ? null : _deliver,
+            icon: _processing
+                ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+                : const Icon(Icons.check_circle_rounded),
+            label: Text(_processing ? 'Обробка...' : 'Позначити як доставлено'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF34C759),
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 56),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
         ],
       );
-    }
-
-    if (status == 'delivered') {
-      return const Center(
-        child: Text(
-          'Замовлення вже доставлено',
-          style: TextStyle(color: Colors.grey),
+    } else if (status == 'delivered') {
+      buttonContent = Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF34C759).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_rounded, color: Color(0xFF34C759)),
+            SizedBox(width: 8),
+            Text(
+              'Замовлення вже доставлено',
+              style: TextStyle(
+                color: Color(0xFF34C759),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      buttonContent = Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: theme.disabledColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.info_rounded, color: theme.hintColor),
+            const SizedBox(width: 8),
+            Text(
+              'Замовлення скасовано або недоступне',
+              style: TextStyle(
+                color: theme.hintColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return const Center(
-      child: Text(
-        'Замовлення недоступне',
-        style: TextStyle(color: Colors.grey),
+    return Container(
+      padding: EdgeInsets.only(
+        top: 16,
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).padding.bottom > 0
+            ? MediaQuery.of(context).padding.bottom + 8
+            : 16,
       ),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E222D) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+      ),
+      child: buttonContent,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final orderType = _order['order_type']?.toString() ?? 'parcel';
     final city = _order['city']?.toString() ?? '';
     final pickupAddress = _order['pickup_address']?.toString() ?? '';
@@ -225,123 +460,294 @@ class _CourierOrderDetailsScreenState extends State<CourierOrderDetailsScreen> {
     final createdAt = _order['created_at']?.toString() ?? '';
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF13151A) : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('Деталі доставки'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: theme.textTheme.titleLarge?.color,
+        title: const Text(
+          'Деталі доставки',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.local_shipping_outlined),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _orderTypeText(orderType),
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        StatusChip(status: _order['status']),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    _infoRow(Icons.location_city, 'Місто', city),
-                    _infoRow(
-                      Icons.my_location_outlined,
-                      'Звідки забрати',
-                      pickupAddress,
-                    ),
-                    _infoRow(
-                      Icons.location_on_outlined,
-                      'Куди доставити',
-                      deliveryAddress,
-                    ),
-                    _infoRow(Icons.route_outlined, 'Відстань', '$distance км'),
-                    _infoRow(Icons.timer_outlined, 'Орієнтовний час', '$time хв'),
-                    _infoRow(Icons.phone_outlined, 'Телефон', phone),
-                    _infoRow(Icons.access_time, 'Створено', createdAt),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Опис замовлення',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        description.isEmpty
-                            ? 'Опис не вказано.'
-                            : description,
-                      ),
-                    ],
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E222D) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
                 ),
               ),
-            ),
-            if (comment.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Коментар клієнта',
-                          style: TextStyle(
-                            fontSize: 15,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          _orderTypeIcon(orderType),
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _orderTypeText(orderType),
+                          style: const TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(comment),
-                      ],
-                    ),
+                      ),
+                      StatusChip(status: _order['status']),
+                    ],
                   ),
+                  const SizedBox(height: 16),
+                  Divider(
+                    color: isDark
+                        ? Colors.white10
+                        : Colors.black.withValues(alpha: 0.05),
+                    height: 1,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        children: [
+                          const SizedBox(height: 4),
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF34C759),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          ),
+                          Container(
+                            width: 1.5,
+                            height: 44,
+                            color: isDark ? Colors.white10 : Colors.black12,
+                          ),
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Color(0xFFFF3B30),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              pickupAddress,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'Адреса забору',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.hintColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              deliveryAddress,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'Адреса доставки',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.hintColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildMetricCard(
+                  context,
+                  Icons.directions_rounded,
+                  distance,
+                  'км',
+                  'Відстань',
+                ),
+                const SizedBox(width: 12),
+                _buildMetricCard(
+                  context,
+                  Icons.hourglass_top_rounded,
+                  time,
+                  'хв',
+                  'Час доставки',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E222D) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
                 ),
               ),
-            ],
-            const SizedBox(height: 24),
-            _buildActionButtons(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Додаткова інформація',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildInfoRow(
+                    Icons.location_city_rounded,
+                    'Місто замовлення',
+                    city,
+                    context,
+                  ),
+                  _buildInfoRow(
+                    Icons.phone_rounded,
+                    'Контакт клієнта',
+                    phone,
+                    context,
+                  ),
+                  _buildInfoRow(
+                    Icons.calendar_month_rounded,
+                    'Створено',
+                    createdAt,
+                    context,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E222D) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Деталі відправлення',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description.isEmpty ? 'Опис відсутній.' : description,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  if (comment.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Divider(
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.05),
+                      height: 1,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Коментар кур’єру',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      comment,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
+      bottomNavigationBar: _buildActionButtons(),
     );
   }
 }
